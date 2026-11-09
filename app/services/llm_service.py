@@ -1,6 +1,6 @@
 
 import os
-
+import logging
 from dotenv import load_dotenv
 from openai import (
     OpenAI,
@@ -16,7 +16,7 @@ from app.services.exceptions import (
     AIProviderError,
     AIResponseError,
 )
-
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -53,26 +53,31 @@ class LLMService:
             )
 
         except APITimeoutError as exc:
+            logger.exception("OpenAI API request timed out")
             raise AIProviderError(
                 "The AI analysis request timed out."
             ) from exc
 
         except APIConnectionError as exc:
+            logger.exception("Unable to connect to OpenAI API")
             raise AIProviderError(
-                "Unable to connect to the AI provider."
+                "Unable to connect to OpenAI API."
             ) from exc
 
         except APIStatusError as exc:
+            logger.exception("OpenAI API returned an HTTP error")
             raise AIProviderError(
                 f"The AI provider returned HTTP {exc.status_code}."
             ) from exc
 
         except OpenAIError as exc:
+            logger.exception("OpenAI API request failed")
             raise AIProviderError(
-                "The AI provider could not complete the request."
+                "OpenAI API request failed."
             ) from exc
 
         if response.output_parsed is None:
+            logger.error("OpenAI response did not contain parsed output")
             raise AIResponseError(
                 "The model did not return a parsed analysis."
             )

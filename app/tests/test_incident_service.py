@@ -1,4 +1,3 @@
-
 from unittest.mock import Mock
 
 from app.models.incident import Incident, Severity
@@ -15,12 +14,12 @@ def test_analyze_returns_llm_result(monkeypatch):
         missing_information=[],
     )
 
-    mock_llm = Mock()
-    mock_llm.analyze.return_value = expected_result
+    mock_provider = Mock()
+    mock_provider.analyze.return_value = expected_result
 
     monkeypatch.setattr(
-        "app.services.incident_service.LLMService",
-        lambda: mock_llm,
+        "app.services.incident_service.AIProviderFactory.create",
+        lambda: mock_provider,
     )
 
     service = IncidentService()
@@ -35,4 +34,4 @@ def test_analyze_returns_llm_result(monkeypatch):
     result = service.analyze(incident)
 
     assert result == expected_result
-    mock_llm.analyze.assert_called_once()
+    mock_provider.analyze.assert_called_once()

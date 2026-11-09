@@ -1,16 +1,18 @@
 # AI Incident Analyzer
 
-A FastAPI application that parses software incident reports, builds a structured prompt, and uses an AI model to generate a structured incident analysis.
+A FastAPI application that parses software incident reports, builds structured prompts, and uses configurable AI providers to generate validated incident analyses.
 
 ## Features
 
 - Validates incident input using Pydantic.
 - Normalizes incident messages and extracts keywords.
 - Builds prompts with explicit diagnostic and safety instructions.
-- Requests structured analysis from the OpenAI API.
-- Validates analysis output using an `AnalysisResult` model.
+- Supports multiple AI providers: OpenAI and Google Gemini.
+- Uses a provider factory to select the configured AI provider.
+- Defines a common `AIProvider` contract for provider implementations.
+- Validates AI-generated analysis using the `AnalysisResult` Pydantic model.
 - Returns controlled HTTP errors for configuration and provider failures.
-- Includes automated tests for parsing, prompt construction, service orchestration, model validation, and API error handling.
+- Includes automated tests for parsing, prompt construction, provider selection, service orchestration, model validation, and API error handling.
 
 ## Architecture
 
@@ -27,31 +29,46 @@ IncidentService
       |
       +----> PromptBuilder
       |
-      +----> LLMService
+      +----> AIProviderFactory
                   |
                   v
-              OpenAI API
+              AIProvider
+                  |
+          +-------+-------+
+          |               |
+          v               v
+      LLMService     GeminiService
+          |               |
+          v               v
+       OpenAI API      Gemini API
+          |               |
+          +-------+-------+
                   |
                   v
-          AnalysisResult
+            AnalysisResult
                   |
                   v
-             API Response
+              API Response
 ```
 
 ## Requirements
 
-- Python 3.10 or compatible
-- An OpenAI API key
-- An OpenAI model available to your API account
+- Python 3.10 or compatible.
+- An API key for at least one supported provider.
+- An available model for the selected provider.
+
+Supported providers:
+
+- OpenAI
+- Google Gemini
 
 ## Setup
 
 ### 1. Clone the repository
 
 ```bash
-git clone <your-repository-url>
-cd incident-analyser
+git clone https://github.com/r4rohits/ai-incident-analyzer.git
+cd ai-incident-analyzer
 ```
 
 ### 2. Create and activate a virtual environment
@@ -73,9 +90,29 @@ python -m pip install -r requirements-dev.txt
 
 ### 4. Configure environment variables
 
-Copy `.env.example` to `.env` and set your own API key and an available model.
+Copy `.env.example` to `.env`.
 
-Never commit `.env` or share your API key publicly.
+Configure the provider you want to use.
+
+#### OpenAI
+
+```dotenv
+AI_PROVIDER=openai
+OPENAI_API_KEY=your_api_key_goes_here
+OPENAI_MODEL=your_available_model
+```
+
+#### Google Gemini
+
+```dotenv
+AI_PROVIDER=gemini
+GEMINI_API_KEY=your_gemini_key_here
+GEMINI_MODEL=your_available_model
+```
+
+Only the credentials for the selected provider are required.
+
+Never commit `.env` or share API credentials publicly.
 
 ### 5. Run the application
 
@@ -83,9 +120,11 @@ Never commit `.env` or share your API key publicly.
 uvicorn app.main:app --reload
 ```
 
-Open `http://127.0.0.1:8000/docs` to explore the API.
+Open the interactive API documentation:
 
-## API endpoint
+http://127.0.0.1:8000/docs
+
+## API Endpoint
 
 ### `POST /incidents/analyze`
 
@@ -108,30 +147,32 @@ The response contains:
 - `confidence`
 - `missing_information`
 
-The AI-generated analysis is advisory. Its conclusions and confidence score are not guaranteed to be correct, and recommended actions are not automatically executed.
+The AI-generated analysis is advisory. Its conclusions and confidence score are not guaranteed to be correct. Recommended actions are not automatically executed.
 
-## Error handling
+## Error Handling
 
 - `503 Service Unavailable`: AI analysis is not configured.
 - `502 Bad Gateway`: The AI provider failed or returned an unusable response.
 
-## Run tests
+## Run Tests
 
 ```powershell
 python -m pytest -v
 ```
 
-## Current limitations
+The automated test suite uses mocked AI provider responses. A separate live Gemini API request has also been successfully tested.
+
+## Current Limitations
 
 - The parser uses basic normalization and stop-word filtering.
 - AI analysis quality and confidence calibration have not yet been evaluated systematically.
-- Automated tests mock the LLM; a real API integration test is still required.
+- Confidence scores are model-generated and are not statistically calibrated.
 - Authentication, rate limiting, production deployment, and monitoring have not yet been implemented.
 
 ## Security
 
 - Keep API credentials in environment variables.
-- Do not commit `.env`.
+- Never commit `.env`.
 - Treat incident messages as untrusted input.
 - Validate model output before using it.
 - Review AI recommendations before taking operational action.

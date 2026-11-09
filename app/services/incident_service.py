@@ -2,7 +2,7 @@ from app.models.incident import Incident
 from app.models.analysis_result import AnalysisResult
 from app.services.parser import Parser
 from app.services.prompt_builder import PromptBuilder
-from app.services.llm_service import LLMService
+from app.services.ai_provider_factory import AIProviderFactory
 
 
 class IncidentService:
@@ -15,7 +15,7 @@ class IncidentService:
         parsed = self.parser.parse(incident)
         prompt = self.prompt_builder.build(parsed)
 
-        llm_service = LLMService()
-        result = llm_service.analyze(prompt)
+        ai_provider = AIProviderFactory.create()
+        result = ai_provider.analyze(prompt)
 
         return result
